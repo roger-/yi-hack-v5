@@ -464,27 +464,30 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Find the record with the largest frame_counter
     current_frame = -1;
     frame_counter = -1;
-    for (i = 0; i < table_record_num; i++) {
-        // Get pointer to the record
-        record_ptr = addr + table_offset + (i * table_record_size);
-        // Get the frame counter
-        frame_counter_tmp = (((int) *(record_ptr + frame_counter_offset + 1)) << 8) +
-                    ((int) *(record_ptr + frame_counter_offset));
-        // Check if the is the largest frame_counter
-        if (frame_counter_tmp > frame_counter) {
-            frame_counter = frame_counter_tmp;
-        } else {
-            current_frame = i;
-            break;
-        }
-    }
-    if (debug) fprintf(stderr, "%lld - found latest frame: id %d, frame_counter %d\n", current_timestamp(), current_frame, frame_counter);
 
     // Wait for the next record to arrive and read the frame
     for (;;) {
+        if(current_frame < 0 || frame_counter < 0) {
+            // Find the record with the largest frame_counter
+            for (i = 0; i < table_record_num; i++) {
+                // Get pointer to the record
+                record_ptr = addr + table_offset + (i * table_record_size);
+                // Get the frame counter
+                frame_counter_tmp = (((int) *(record_ptr + frame_counter_offset + 1)) << 8) +
+                            ((int) *(record_ptr + frame_counter_offset));
+                // Check if the is the largest frame_counter
+                if (frame_counter_tmp > frame_counter) {
+                    frame_counter = frame_counter_tmp;
+                } else {
+                    current_frame = i;
+                    break;
+                }
+            }
+            if (debug) fprintf(stderr, "%lld - found latest frame: id %d, frame_counter %d\n", current_timestamp(), current_frame, frame_counter);
+        }
+            
         // Get pointer to the record
         record_ptr = addr + table_offset + (current_frame * table_record_size);
         if (debug) fprintf(stderr, "%lld - processing frame %d\n", current_timestamp(), current_frame);
@@ -521,6 +524,11 @@ int main(int argc, char **argv) {
             } else {
                 current_frame++;
             }
+        } else {
+            if (debug) fprintf(stderr, "%lld - frame counter invalid: frame_counter %d, next_frame_counter %d\n", current_timestamp(), frame_counter, next_frame_counter);
+            
+            current_frame = -1;
+            frame_counter = -1;
         }
         fflush(fOut);
 
